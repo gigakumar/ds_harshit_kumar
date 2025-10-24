@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local state
+/tmp/
+*.db
+
+# Keys (do not commit)
+keys/
+
+# Node/other
+node_modules/
+
+# macOS
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+swift/OnDeviceAIApp/.build/
+swift/OnDeviceAIApp/dist/

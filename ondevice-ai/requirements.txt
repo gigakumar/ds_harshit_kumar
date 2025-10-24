@@ -1,0 +1,8 @@
+grpcio
+grpcio-tools
+flask
+httpx
+msgpack
+numpy
+PyYAML
+pytest

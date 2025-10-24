@@ -1,0 +1,36 @@
+syntax = "proto3";
+package assistant;
+
+message Empty {}
+message ID { string id = 1; }
+
+message IndexRequest {
+  string id = 1;
+  string user_id = 2;
+  string text = 3;
+  string source = 4;
+  int64 ts = 5;
+}
+
+message IndexResponse { string id = 1; string doc_id = 2; int32 status = 3; }
+
+message QueryRequest { string id = 1; string user_id = 2; string query = 3; int32 k = 4; }
+message QueryHit { string doc_id = 1; float score = 2; string text = 3; }
+message QueryResponse { string id = 1; repeated QueryHit hits = 2; }
+
+message Action {
+  string name = 1; // e.g. "send_email","create_event"
+  string payload = 2; // JSON
+  bool sensitive = 3;
+  bool preview_required = 4;
+}
+
+message PlanRequest { string id = 1; string user_id = 2; string goal = 3; }
+message PlanResponse { string id = 1; repeated Action actions = 2; }
+
+service Assistant {
+  rpc IndexText(IndexRequest) returns (IndexResponse);
+  rpc Query(QueryRequest) returns (QueryResponse);
+  rpc Plan(PlanRequest) returns (PlanResponse);
+  rpc ExecuteAction(Action) returns (IndexResponse); // Execute or simulate
+}

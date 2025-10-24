@@ -1,0 +1,14 @@
+id: calendar.v1
+name: Calendar Plugin
+version: 0.1.0
+scopes:
+  - read_calendar
+  - write_calendar
+api: http://127.0.0.1:5100
+signature: ed25519:BASE64SIG
+min_core_version: 0.1.0
+capabilities:
+  - calendar
+  - notes
+  - finder
+  - mail

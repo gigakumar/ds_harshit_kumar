@@ -6,3 +6,8 @@ msgpack
 numpy
 PyYAML
 pytest
+huggingface_hub
+pyinstaller
+Pillow
+pywebview
+pyobjc

@@ -159,6 +159,35 @@ actor AutomationClient {
         return AutomationHealth(ok: response.status.lowercased() == "ok", documentCount: response.documents ?? 0)
     }
 
+    func permissions() async throws -> AutomationPermissions {
+        struct PermissionsEnvelope: Decodable { let permissions: AutomationPermissions }
+        let response: PermissionsEnvelope = try await get("/permissions")
+        return response.permissions
+    }
+
+    func update(permissions: AutomationPermissions) async throws -> AutomationPermissions {
+        struct UpdateBody: Encodable { let permissions: AutomationPermissions }
+        struct UpdateEnvelope: Decodable { let permissions: AutomationPermissions }
+        let response: UpdateEnvelope = try await post("/permissions", body: UpdateBody(permissions: permissions))
+        return response.permissions
+    }
+
+    func modelConfiguration() async throws -> ModelConfiguration {
+        let response: ModelConfiguration = try await get("/model")
+        return response
+    }
+
+    func updateModelConfiguration(profileID: String, runtimeURL: String? = nil, backend: String? = nil) async throws -> ModelConfiguration {
+        struct Body: Encodable {
+            let profile: String
+            let runtime_url: String?
+            let backend: String?
+        }
+        let body = Body(profile: profileID, runtime_url: runtimeURL, backend: backend)
+        let response: ModelConfiguration = try await post("/model", body: body)
+        return response
+    }
+
     func index(text: String, source: String = "ui") async throws -> String {
         struct IndexBody: Encodable { let text: String; let source: String }
         struct IndexResponse: Decodable { let id: String }
@@ -173,10 +202,13 @@ actor AutomationClient {
         return response.hits
     }
 
-    func plan(goal: String) async throws -> [PlanAction] {
-        struct PlanBody: Encodable { let goal: String }
+    func plan(goal: String, params: PlanParameters? = nil) async throws -> [PlanAction] {
+        struct PlanBody: Encodable {
+            let goal: String
+            let params: PlanParameters?
+        }
         struct PlanResponse: Decodable { let actions: [PlanAction] }
-        let response: PlanResponse = try await post("/plan", body: PlanBody(goal: goal))
+        let response: PlanResponse = try await post("/plan", body: PlanBody(goal: goal, params: params))
         return response.actions
     }
 

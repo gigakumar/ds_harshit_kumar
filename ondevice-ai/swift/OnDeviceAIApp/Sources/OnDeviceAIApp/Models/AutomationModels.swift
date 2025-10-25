@@ -198,3 +198,52 @@ struct AutomationHealth: Codable {
     let ok: Bool
     let documentCount: Int
 }
+
+struct AutomationPermissions: Codable, Equatable {
+    var fileAccess: Bool
+    var calendarAccess: Bool
+    var mailAccess: Bool
+
+    static let defaults = AutomationPermissions(fileAccess: false, calendarAccess: false, mailAccess: false)
+}
+
+struct ModelRequirement: Codable, Hashable {
+    let environment: [String]?
+}
+
+struct ModelProfile: Identifiable, Codable, Hashable {
+    let id: String
+    let label: String
+    let backend: String
+    let description: String
+    let capabilities: [String]
+    let requires: ModelRequirement?
+    let settings: [String: [String: String]]?
+    let selected: Bool?
+
+    var isSelected: Bool { selected ?? false }
+}
+
+struct ModelConfiguration: Codable, Hashable {
+    let profile: String
+    let backend: String
+    let runtimeURL: String?
+    let profiles: [ModelProfile]
+
+    enum CodingKeys: String, CodingKey {
+        case profile
+        case backend
+        case runtimeURL = "runtime_url"
+        case profiles
+    }
+}
+
+struct PlanParameters: Codable, Hashable {
+    let temperature: Double
+    let maxTokens: Int
+
+    enum CodingKeys: String, CodingKey {
+        case temperature
+        case maxTokens = "max_tokens"
+    }
+}

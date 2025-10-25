@@ -17,11 +17,14 @@ final class AppState: ObservableObject {
         self.automationDashboard = AutomationDashboardViewModel(client: client)
         self.pluginsViewModel = PluginsViewModel(client: client)
         self.settingsViewModel = SettingsViewModel(client: client)
+        self.settingsViewModel.onProfileUpdated = { [weak self] in
+            Task { await self?.automationDashboard.refresh() }
+        }
     }
 
     func refreshAll() {
         Task {
-            await settingsViewModel.refreshHealth()
+            await settingsViewModel.refresh()
             await knowledgeViewModel.refresh()
             await automationDashboard.refresh()
             await pluginsViewModel.refresh()

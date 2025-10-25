@@ -1,6 +1,14 @@
 # ondevice-ai
 
-Minimal local-first assistant runtime with gRPC, deterministic embeddings, and a SwiftUI front-end scaffold.
+Local-first automation stack with an opinionated SwiftUI client, configurable model profiles, and an offline-first MLX runtime that ships as part of the macOS app bundle.
+
+## Features
+
+- 📦 **Self-contained packaging** – package the automation daemon, configuration, plugins, and bundled TinyLlama weights into a single `.app`.
+- 🧠 **Model profiles** – toggle between the bundled TinyLlama model, an Ollama host, or OpenAI GPT-4o-mini directly from Settings.
+- 🕹️ **Automation dashboard** – responsive quick actions, live permission footprint, and model status at a glance.
+- 🗂️ **Knowledge console** – index raw snippets from the UI, semantic search, and document drill-down with adaptive layout.
+- 🧰 **Planning controls** – adjust temperature, token budget, and knowledge grounding when generating automation plans.
 
 ## Quickstart
 
@@ -34,14 +42,50 @@ Run tests:
 pytest -q
 ```
 
+## Bundled model workflow
+
+The default profile targets TinyLlama 1.1B chat (quantized for MLX). Two options exist:
+
+- **Lazy download (default)** – the runtime detects missing weights on first launch and fetches them into `~/.mahi/models/tinyllama-1.1b-chat-q4f16_1`. Set `HUGGINGFACE_TOKEN` (or run `huggingface-cli login`) if the repo requires authentication.
+- **Eager download** – stage the weights ahead of time for offline packaging:
+
+	```bash
+	make bundle-models
+	```
+
+	Optionally use `ML_MODELS_DIR=/custom/path make bundle-models` to control the staging directory. The runtime still resolves `bundle://` URLs to the same location.
+
+## Package the automation daemon
+
+1. Ensure dependencies are installed (`pip install -r requirements.txt`).
+2. Build the app bundle with PyInstaller: `make package`.
+3. (Optional) Bundle the TinyLlama weights inside the `.app`: `make package-with-models` (requires Hugging Face auth as described above).
+
+The resulting `dist/OnDeviceAI.app` contains:
+
+- `ml_models/` weights for the TinyLlama profile.
+- `config/automation.yaml` and editable profiles.
+- `plugins/` manifests.
+- (Optional) `swift/OnDeviceAIApp/dist` assets if you build the Swift UI as a web wrapper.
+
+## Refined SwiftUI client
+
+- **Planner** – goal templates carousel, sliders for temperature/tokens, and knowledge toggle.
+- **Knowledge** – inline text editor to index new snippets, adaptive document grid, and details pane.
+- **Automation dashboard** – responsive quick actions, backend model summary, and permission footprint.
+- **Settings** – live daemon status, permission toggles, and model profile selector that persists to `automation.yaml`.
+
 ## Layout
 
 - `proto/assistant.proto` — gRPC schema
 - `core/` — vector store, orchestrator, adapter, gRPC server
 - `automation_daemon.py` — unified entry (runs gRPC server + HTTP runtime)
 - `tools/` — MLX runtime server and utilities
+- `ml_models/` — bundled TinyLlama weights staged for packaging
 - `cli/` — CLI subcommand runner (`index`, `query`, `plan`)
 - `tests/` — unit and e2e tests
+- `swift/` — Swift Package for the macOS front-end (`OnDeviceAIApp`)
+- `packaging/` — PyInstaller spec for producing `OnDeviceAI.app`
 
 ## License
 
@@ -52,7 +96,7 @@ MIT
 
 ## SwiftUI client
 
-The `swift/` directory contains a Swift Package with basic views. Open the package in Xcode or run:
+The `swift/` directory contains the Swift Package. Open it in Xcode or run:
 
 ```bash
 open swift/OnDeviceAIApp/Package.swift

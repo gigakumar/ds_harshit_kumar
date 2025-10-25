@@ -6,6 +6,7 @@ struct KnowledgeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
+                addDocumentSection
                 searchSection
                 documentsSection
                 if let detail = viewModel.highlightedDoc {
@@ -17,6 +18,46 @@ struct KnowledgeView: View {
         }
         .scrollIndicators(.hidden)
         .foregroundColor(.white)
+    }
+
+    private var addDocumentSection: some View {
+        GlassContainer {
+            VStack(alignment: .leading, spacing: 16) {
+                GlassSectionHeader(title: "Add knowledge", systemImage: "tray.and.arrow.down")
+                Text("Drop raw notes or transcripts to seed the knowledge graph without leaving the app.")
+                    .font(.system(.callout, design: .rounded))
+                    .foregroundColor(.white.opacity(0.75))
+                TextEditor(text: $viewModel.newDocumentText)
+                    .frame(minHeight: 120)
+                    .padding(12)
+                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .foregroundColor(.white)
+                HStack(spacing: 12) {
+                    TextField("Source tag", text: $viewModel.newDocumentSource)
+                        .textFieldStyle(.plain)
+                        .padding(12)
+                        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: 180)
+                    Button {
+                        viewModel.indexSnippet()
+                    } label: {
+                        Label("Index snippet", systemImage: "square.and.arrow.down.on.square")
+                            .font(.system(.headline, design: .rounded))
+                    }
+                    .buttonStyle(GlassToolbarButtonStyle())
+                    .disabled(viewModel.isIndexing)
+
+                    if viewModel.isIndexing {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                    }
+
+                    Spacer()
+                }
+            }
+        }
     }
 
     private var searchSection: some View {
@@ -65,29 +106,31 @@ struct KnowledgeView: View {
                         .progressViewStyle(.circular)
                         .tint(.white)
                 }
-                ForEach(viewModel.documents) { document in
-                    Button {
-                        viewModel.loadDocumentDetail(id: document.id)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(document.source.capitalized)
-                                    .font(.system(.headline, design: .rounded))
-                                Spacer()
-                                Text(document.timestamp, style: .relative)
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.6))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 18)], spacing: 18) {
+                    ForEach(viewModel.documents) { document in
+                        Button {
+                            viewModel.loadDocumentDetail(id: document.id)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(document.source.capitalized)
+                                        .font(.system(.headline, design: .rounded))
+                                    Spacer()
+                                    Text(document.timestamp, style: .relative)
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                                Text(document.preview)
+                                    .font(.system(.callout, design: .rounded))
+                                    .foregroundColor(.white.opacity(0.86))
+                                    .lineLimit(3)
                             }
-                            Text(document.preview)
-                                .font(.system(.callout, design: .rounded))
-                                .foregroundColor(.white.opacity(0.86))
-                                .lineLimit(3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 if viewModel.documents.isEmpty {
                     Text("No documents indexed yet. Use the CLI or automation flows to add context.")

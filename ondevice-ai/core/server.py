@@ -89,16 +89,23 @@ def _safe_parse_json(raw: str) -> Any:
 def create_server(host: str = "[::]", port: int = 50051, orchestrator: Orchestrator | None = None) -> grpc.Server:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     rpc.add_AssistantServicer_to_server(AssistantServicer(orchestrator=orchestrator), server)
-    address = f"{host}:{port}"
-    if server.add_insecure_port(address) == 0:
-        raise RuntimeError(f"Failed to bind gRPC server on {address}")
+    requested_address = f"{host}:{port}"
+    bound_port = server.add_insecure_port(requested_address)
+    if bound_port == 0:
+        if port != 0:
+            fallback_address = f"{host}:0"
+            bound_port = server.add_insecure_port(fallback_address)
+    if bound_port == 0:
+        raise RuntimeError(f"Failed to bind gRPC server on {requested_address}")
+    setattr(server, "_bound_port", bound_port)
     return server
 
 
 def serve(host: str = "[::]", port: int = 50051) -> None:
     server = create_server(host=host, port=port)
     server.start()
-    print(f"gRPC server listening {host}:{port}")
+    bound_port = getattr(server, "_bound_port", port)
+    print(f"gRPC server listening {host}:{bound_port}")
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:

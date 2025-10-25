@@ -9,6 +9,9 @@ final class KnowledgeViewModel: ObservableObject {
     @Published var semanticHits: [QueryHit] = []
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
+    @Published var newDocumentText: String = ""
+    @Published var newDocumentSource: String = "sandbox"
+    @Published var isIndexing: Bool = false
 
     private let client: AutomationClient
 
@@ -47,6 +50,32 @@ final class KnowledgeViewModel: ObservableObject {
                 highlightedDoc = try await client.fetchDocument(id: id)
             } catch {
                 errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func indexSnippet() {
+        let trimmed = newDocumentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty == false else {
+            errorMessage = "Enter some text before indexing."
+            return
+        }
+        isIndexing = true
+        Task {
+            do {
+                _ = try await client.index(text: trimmed, source: newDocumentSource.isEmpty ? "manual" : newDocumentSource)
+                await MainActor {
+                    newDocumentText = ""
+                    errorMessage = nil
+                }
+                await refresh()
+            } catch {
+                await MainActor {
+                    errorMessage = error.localizedDescription
+                }
+            }
+            await MainActor {
+                isIndexing = false
             }
         }
     }

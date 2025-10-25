@@ -29,6 +29,8 @@ final class AutomationDashboardViewModel: ObservableObject {
     @Published var automationLog: [AutomationLogEvent] = []
     @Published var isRunningQuickAction: Bool = false
     @Published var statusMessage: String?
+    @Published var modelSummary: ModelConfiguration?
+    @Published var permissions: AutomationPermissions = .defaults
 
     private let client: AutomationClient
 
@@ -38,7 +40,13 @@ final class AutomationDashboardViewModel: ObservableObject {
 
     func refresh() async {
         do {
-            automationLog = try await client.logs(limit: 60)
+            async let logTask = client.logs(limit: 60)
+            async let modelTask = client.modelConfiguration()
+            async let permissionsTask = client.permissions()
+            let (events, model, perms) = try await (logTask, modelTask, permissionsTask)
+            automationLog = events
+            modelSummary = model
+            permissions = perms
         } catch {
             statusMessage = error.localizedDescription
         }

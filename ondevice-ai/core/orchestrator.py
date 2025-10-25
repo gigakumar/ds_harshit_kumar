@@ -1,9 +1,15 @@
 # core/orchestrator.py
-import numpy as np
-from core.vector_store import VectorStore
+from __future__ import annotations
+
+import asyncio
+import json
+from typing import Any, Optional
+
+import numpy as np  # type: ignore[reportMissingImports]
+
+from core.config import get_config
 from core.model_adapter import ModelAdapter
-import asyncio, json
-from typing import Optional, Any
+from core.vector_store import VectorStore
 
 class Orchestrator:
     def __init__(self, store: Optional[VectorStore]=None, model: Optional[Any]=None):
@@ -18,13 +24,17 @@ class Orchestrator:
 
     async def index_text(self, text, source="cli"):
         doc_id = self.store.add(text, source)
-        vec = (await self.model.embed([text]))[0]
-        import numpy as np
-        self.store.insert_embedding(doc_id, np.array(vec, dtype=np.float32))
+        vectors = await self.model.embed([text])
+        if vectors:
+            vector = np.array(vectors[0], dtype=np.float32)
+            self.store.insert_embedding(doc_id, vector)
         return doc_id
 
     async def query(self, q, k=5):
-        qv = (await self.model.embed([q]))[0]
+        vectors = await self.model.embed([q])
+        if not vectors:
+            return []
+        qv = np.array(vectors[0], dtype=np.float32)
         rows = self.store.all_embeddings()
         scored=[]
         for _, v, doc_id in rows:
@@ -35,16 +45,30 @@ class Orchestrator:
             hits.append({"doc_id": doc_id, "score": score, "text": self.store.get_doc(doc_id)})
         return hits
 
-    async def plan(self, goal):
-        # deterministic prompt recipe
-        prompt = (
-            "You are a local assistant. Create a step-by-step plan of actions to achieve: "
-            f"{goal}\nReturn JSON array of actions: {{name, payload, sensitive, preview_required}}"
-        )
-        txt = await self.model.predict(prompt, params={"max_tokens":256})
-        # expect txt to be JSON. Fallback: try parse, else simple action
+    async def plan(self, goal, params: Optional[dict] = None):
+        config = get_config()
+        mode = config.get("model", {}).get("mode", "ml")
+        if mode != "ml":
+            # Rule-based adapter already returns serialized JSON
+            txt = await self.model.predict(goal, params=params or {})
+        else:
+            prompt = (
+                "You are a local assistant. Create a step-by-step plan of actions to achieve: "
+                f"{goal}\nReturn JSON array of actions: {{name, payload, sensitive, preview_required}}"
+            )
+            plan_params = dict(params or {})
+            if "max_tokens" not in plan_params:
+                plan_params = dict(plan_params)
+                plan_params["max_tokens"] = 256
+            txt = await self.model.predict(prompt, params=plan_params)
+
         try:
             actions = json.loads(txt)
         except Exception:
-            actions = [{"name":"note","payload":json.dumps({"text":txt}), "sensitive":False, "preview_required":False}]
+            actions = [{
+                "name": "note",
+                "payload": json.dumps({"text": txt}),
+                "sensitive": False,
+                "preview_required": False,
+            }]
         return actions

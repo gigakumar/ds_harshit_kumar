@@ -1,0 +1,59 @@
+model:
+  profile: mlx_tinyllama
+  backend: mlx
+  runtime_url: http://127.0.0.1:9000
+  profiles:
+  - id: mlx_tinyllama
+    label: On-device TinyLlama
+    backend: mlx
+    description: Ship-ready TinyLlama 1.1B chat weights bundled with the app for fully
+      offline planning.
+    capabilities:
+    - offline
+    - fast-planning
+    - no-network
+    settings:
+      mlx:
+        model_path: bundle://tinyllama-1.1b-chat-q4f16_1
+        model_name: mlx-community/tinyllama-1.1b-chat-q4f16_1
+  - id: ollama_llama3
+    label: Ollama Llama 3
+    backend: ollama
+    description: Leverage an Ollama-managed Llama 3 model running elsewhere on your
+      LAN.
+    capabilities:
+    - context-resident
+    - multi-user
+    settings:
+      ollama:
+        host: http://127.0.0.1:11434
+        model: llama3
+  - id: openai_gpt4o
+    label: OpenAI GPT-4o mini
+    backend: openai
+    description: Use OpenAI's GPT-4o-mini APIs for higher quality planning with network
+      access.
+    capabilities:
+    - cloud
+    - high-quality
+    requires:
+      environment:
+      - OPENAI_API_KEY
+    settings:
+      openai:
+        chat_model: gpt-4o-mini
+        embedding_model: text-embedding-3-small
+  mlx:
+    model_path: bundle://tinyllama-1.1b-chat-q4f16_1
+    model_name: mlx-community/tinyllama-1.1b-chat-q4f16_1
+  ollama:
+    host: http://127.0.0.1:11434
+    model: llama3
+  openai:
+    api_key: ''
+    chat_model: gpt-4o-mini
+    embedding_model: text-embedding-3-small
+permissions:
+  file_access: false
+  calendar_access: false
+  mail_access: false

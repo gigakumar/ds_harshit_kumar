@@ -79,7 +79,7 @@ struct RootView: View {
     }
 
     private func reload() async {
-        await appState.settingsViewModel.refreshHealth()
+        await appState.settingsViewModel.refresh()
         await appState.knowledgeViewModel.refresh()
         await appState.pluginsViewModel.refresh()
         await appState.automationDashboard.refresh()

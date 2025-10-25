@@ -5,7 +5,7 @@ import argparse
 import json
 from typing import Any, Sequence, cast
 
-import grpc
+import grpc  # type: ignore[import-untyped]
 
 from core import assistant_pb2 as pb_module
 from core import assistant_pb2_grpc as rpc
@@ -18,43 +18,74 @@ def _create_stub(target: str) -> rpc.AssistantStub:
     return rpc.AssistantStub(channel)
 
 
+def _handle_rpc_error(exc: grpc.RpcError) -> None:
+    detail = exc.details() or "unknown"
+    if "decompressing data" in detail or "Connect" in detail:
+        message = (
+            "Unable to reach the automation daemon. "
+            "Start it first with `python automation_daemon.py` (leave it running) "
+            "or use the packaged app, then retry."
+        )
+    else:
+        message = f"gRPC call failed: {detail}"
+    raise SystemExit(message) from exc
+
+
 def _index(args: argparse.Namespace) -> None:
     stub = _create_stub(args.target)
-    response = stub.IndexText(
-        pb.IndexRequest(
-            id=args.request_id,
-            user_id=args.user_id,
-            text=args.text,
-            source=args.source,
-            ts=0,
+    response = None
+    try:
+        response = stub.IndexText(
+            pb.IndexRequest(
+                id=args.request_id,
+                user_id=args.user_id,
+                text=args.text,
+                source=args.source,
+                ts=0,
+            )
         )
-    )
+    except grpc.RpcError as exc:  # pragma: no cover - network/runtime failures
+        _handle_rpc_error(exc)
+    if response is None:  # pragma: no cover - defensive
+        return
     print(response.doc_id)
 
 
 def _query(args: argparse.Namespace) -> None:
     stub = _create_stub(args.target)
-    response = stub.Query(
-        pb.QueryRequest(
-            id=args.request_id,
-            user_id=args.user_id,
-            query=args.query,
-            k=args.limit,
+    response = None
+    try:
+        response = stub.Query(
+            pb.QueryRequest(
+                id=args.request_id,
+                user_id=args.user_id,
+                query=args.query,
+                k=args.limit,
+            )
         )
-    )
+    except grpc.RpcError as exc:  # pragma: no cover
+        _handle_rpc_error(exc)
+    if response is None:  # pragma: no cover
+        return
     for hit in response.hits:
         print(json.dumps({"doc_id": hit.doc_id, "score": hit.score, "text": hit.text}))
 
 
 def _plan(args: argparse.Namespace) -> None:
     stub = _create_stub(args.target)
-    response = stub.Plan(
-        pb.PlanRequest(
-            id=args.request_id,
-            user_id=args.user_id,
-            goal=args.goal,
+    response = None
+    try:
+        response = stub.Plan(
+            pb.PlanRequest(
+                id=args.request_id,
+                user_id=args.user_id,
+                goal=args.goal,
+            )
         )
-    )
+    except grpc.RpcError as exc:  # pragma: no cover
+        _handle_rpc_error(exc)
+    if response is None:  # pragma: no cover
+        return
     for action in response.actions:
         print(json.dumps({
             "name": action.name,

@@ -61,6 +61,21 @@ _permissions_state: Dict[str, bool] = {
 }
 
 
+@app.get("/api/health")
+async def api_health():
+    cfg = get_config()
+    model_cfg = cfg.get("model", {})
+    plugins_enabled = bool(plugin_rt and getattr(plugin_rt, "enabled", False))
+    return {
+        "status": "ok",
+        "backend": model_cfg.get("backend"),
+        "profile": model_cfg.get("profile"),
+        "mode": model_cfg.get("mode", "ml"),
+        "scheduler": bool(sch),
+        "plugins": plugins_enabled,
+    }
+
+
 class IndexReq(BaseModel):
     text: str
     source: str = "api"
@@ -265,9 +280,9 @@ WEB_DIST = os.path.abspath(os.path.join(_base_dir, "web", "dist"))
 if os.path.isdir(WEB_DIST):
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
 else:
-     WEB_STATIC = os.path.abspath(os.path.join(_base_dir, "web", "static"))
-     if os.path.isdir(WEB_STATIC):
-          app.mount("/", StaticFiles(directory=WEB_STATIC, html=True), name="web-static")
+    WEB_STATIC = os.path.abspath(os.path.join(_base_dir, "web", "static"))
+    if os.path.isdir(WEB_STATIC):
+        app.mount("/", StaticFiles(directory=WEB_STATIC, html=True), name="web-static")
 
 
 def main():

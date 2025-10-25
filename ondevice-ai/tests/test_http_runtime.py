@@ -6,6 +6,14 @@ def test_index_then_query():
     from tools.mlx_runtime import app
 
     with app.test_client() as client:
+        health_resp = client.get("/health")
+        assert health_resp.status_code == 200
+        health_data = health_resp.get_json()
+        assert health_data["status"] == "ok"
+        assert "backend" in health_data
+        assert "mode" in health_data
+        assert health_data["documents"] == 0
+
         index_resp = client.post("/index", json={"text": "hello world", "source": "test"})
         assert index_resp.status_code == 200
         doc_id = index_resp.get_json()["id"]
@@ -13,6 +21,10 @@ def test_index_then_query():
         docs_resp = client.get("/documents")
         assert docs_resp.status_code == 200
         assert docs_resp.get_json()["documents"]
+
+        updated_health = client.get("/health")
+        assert updated_health.status_code == 200
+        assert updated_health.get_json()["documents"] >= 1
 
         hit_resp = client.post("/query", json={"query": "hello", "limit": 1})
         assert hit_resp.status_code == 200

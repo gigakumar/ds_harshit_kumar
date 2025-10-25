@@ -306,7 +306,18 @@ def _doc_preview(text: str) -> str:
 
 @app.route("/health", methods=["GET"])
 def health() -> Any:
-    return jsonify({"status": "ok", "documents": len(_DOCUMENTS)})
+    _ensure_backend()
+    plugins_enabled = (_PLUGINS_DIR / "plugin-manifest.yaml").exists()
+    return jsonify(
+        {
+            "status": "ok",
+            "documents": len(_DOCUMENTS),
+            "backend": MODEL_BACKEND,
+            "profile": MODEL_CONF.get("profile"),
+            "mode": MODEL_CONF.get("mode", "ml"),
+            "plugins": plugins_enabled,
+        }
+    )
 
 
 @app.route("/embed", methods=["POST"])

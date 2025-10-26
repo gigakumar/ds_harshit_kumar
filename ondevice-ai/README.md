@@ -34,7 +34,22 @@ CLI helpers use the same binary:
 python -m cli.index index "hello world"
 python -m cli.index query "hello"
 python -m cli.index plan "organise my notes"
+python -m cli.index diagnostics --output diagnostics.zip
+python -m cli.index daemon start --set model.backend=ollama
+python -m cli.index daemon status
+python -m cli.index daemon stop
 ```
+
+The daemon supervisor runs automatically and writes logs/state into `~/.mahi/` by default. Use `python -m cli.index daemon status` to view the supervising PID, restart counters, and child PID.
+
+### Configuration overrides
+
+- **Environment variables:** keys that begin with `MAHI_CFG__` update individual paths (e.g. `MAHI_CFG__MODEL__BACKEND=ollama`). Secrets can be injected with `MAHI_SECRET__` or JSON payloads via `MAHI_CONFIG_OVERRIDES` / `MAHI_SECRET_OVERRIDES`. Secret-derived values are applied at runtime and stripped before configs are persisted.
+- **CLI overrides:** `daemon start`/`daemon restart` accept repeated `--set section.key=value` flags plus `--secret section.key=ENVVAR` to merge non-secret and secret overrides when spawning the supervisor.
+
+### Continuous integration
+
+Pushing to `main` or opening a pull request triggers `.github/workflows/ci.yml`, which installs requirements on macOS and executes `pytest ondevice-ai/tests` to keep the project green.
 
 Run tests:
 

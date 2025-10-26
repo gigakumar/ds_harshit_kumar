@@ -28,6 +28,8 @@ struct SettingsDockView: View {
             VStack(alignment: .leading, spacing: 16) {
                 GlassSectionHeader(title: "Daemon connection", systemImage: "antenna.radiowaves.left.and.right")
 
+                ConnectionStatusBadge(status: appState.connectionStatus)
+
                 Text("Automation requests are routed through the local daemon. Update the base URL if you're running it on another host.")
                     .font(.system(.callout, design: .rounded))
                     .foregroundColor(.white.opacity(0.78))

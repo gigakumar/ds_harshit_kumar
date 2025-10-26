@@ -1,6 +1,7 @@
 import platform, subprocess, json, os, sys
 from typing import Dict, Any, Optional
 from core.plugins import PluginManifest
+from tools.agent_browser import get_browser, AgentBrowserError  # optional dependency handled lazily
 
 
 class CapabilityError(Exception):
@@ -39,6 +40,8 @@ class PluginRuntime:
             "create_note": ("notes", self._create_note),
             "create_calendar_event": ("calendar", self._create_calendar_event),
             "compose_mail": ("mail", self._compose_mail),
+            # Agentic browser entrypoint: payload requires {op: ..., ...}
+            "browser": ("browser", self._browser_action),
         }
         if name not in handlers:
             raise CapabilityError(f"Unknown action: {name}")
@@ -62,6 +65,18 @@ class PluginRuntime:
         path = payload.get("path", "~/")
         script = f'tell application "Finder" to open POSIX file (POSIX path of (do shell script "printf %s \'{path}\'"))'
         return await self._run_osascript(script)
+
+    async def _browser_action(self, payload: Dict[str, Any]):
+        op = str(payload.get("op", "")).strip().lower()
+        args = dict(payload)
+        try:
+            br = get_browser()
+            result = br.run(op, **args)
+            return result
+        except AgentBrowserError as e:
+            raise CapabilityError(str(e))
+        except Exception as e:  # pragma: no cover - best-effort
+            raise CapabilityError(f"browser action failed: {e}")
 
     async def _create_note(self, payload: Dict[str, Any]):
         title = (payload.get("title") or "Note")[:120]

@@ -55,5 +55,62 @@ model:
     embedding_model: text-embedding-3-small
 permissions:
   file_access: false
+  network_access: false
   calendar_access: false
   mail_access: false
+auth:
+  bootstrap_token: ""
+  token_ttl_seconds: 3600
+  rate_limit_per_minute: 120
+  enforce_tls: true
+  token_store:
+    backend: keyring
+    keyring_service: mahi-automation
+    file_path: state/tokens.enc
+telemetry:
+  enabled: false
+  retention_days: 30
+  remote_upload:
+    enabled: false
+    endpoint: ""
+registry:
+  database: state/registry.db
+  manifests: []
+  auto_preload: false
+templates:
+  paths:
+  - templates
+sandbox:
+  working_dir: ./sandbox
+  cpu_time_seconds: 10
+  wall_time_seconds: 15.0
+  memory_bytes: 1073741824
+  allow_subprocesses: false
+  allow_network: false
+  max_open_files: 512
+  max_processes: 128
+  max_output_bytes: 268435456
+  idle_priority: true
+  nice_increment: 10
+  collect_usage: true
+runtime_pool:
+  enabled: false
+  executable: tools/mlx_runtime.py
+  min_runtimes: 0
+  desired_runtimes: 0
+  max_runtimes: 2
+  base_port: 9600
+  heartbeat_seconds: 5.0
+  restart_backoff: 3.0
+  shutdown_timeout: 5.0
+supervisor:
+  enabled: true
+  max_restarts: 5
+  window_seconds: 60.0
+  backoff_seconds: 2.0
+  max_backoff_seconds: 30.0
+  graceful_shutdown_seconds: 10.0
+  health_enabled: true
+  health_host: 127.0.0.1
+  health_port: 0
+  health_path: /healthz

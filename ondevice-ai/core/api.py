@@ -66,6 +66,7 @@ async def api_health():
     cfg = get_config()
     model_cfg = cfg.get("model", {})
     plugins_enabled = bool(plugin_rt and getattr(plugin_rt, "enabled", False))
+    stats = await orch.document_stats()
     return {
         "status": "ok",
         "backend": model_cfg.get("backend"),
@@ -73,6 +74,7 @@ async def api_health():
         "mode": model_cfg.get("mode", "ml"),
         "scheduler": bool(sch),
         "plugins": plugins_enabled,
+        "documents": stats.get("count", 0),
     }
 
 
@@ -130,6 +132,36 @@ class ModelUpdateReq(BaseModel):
     runtime_url: Optional[str] = None
     backend: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
+
+
+@app.get("/api/documents")
+async def api_documents(limit: int = 100):
+    docs = await orch.list_documents(limit=limit)
+    return {"documents": docs}
+
+
+@app.get("/api/documents/{doc_id}")
+async def api_document_detail(doc_id: str):
+    doc = await orch.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="document_not_found")
+    return doc
+
+
+@app.delete("/api/documents/{doc_id}")
+async def api_document_delete(doc_id: str):
+    removed = await orch.delete_document(doc_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="document_not_found")
+    write_event({"type": "document_deleted", "doc_id": doc_id})
+    return {"status": "deleted", "doc_id": doc_id}
+
+
+@app.delete("/api/documents")
+async def api_documents_clear():
+    await orch.clear_documents()
+    write_event({"type": "documents_cleared"})
+    return {"status": "cleared"}
 
 
 @app.post("/api/execute")

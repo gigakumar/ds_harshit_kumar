@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 
 import numpy as np  # type: ignore[reportMissingImports]
 
@@ -42,7 +42,16 @@ class Orchestrator:
         scored.sort(reverse=True, key=lambda x:x[0])
         hits=[]
         for score, doc_id in scored[:k]:
-            hits.append({"doc_id": doc_id, "score": score, "text": self.store.get_doc(doc_id)})
+            meta = self.store.get_doc_meta(doc_id)
+            if meta:
+                hits.append({
+                    "doc_id": doc_id,
+                    "score": score,
+                    "text": meta.get("text"),
+                    "meta": meta.get("meta"),
+                })
+            else:
+                hits.append({"doc_id": doc_id, "score": score, "text": self.store.get_doc(doc_id)})
         return hits
 
     async def plan(self, goal, params: Optional[dict] = None):
@@ -72,3 +81,23 @@ class Orchestrator:
                 "preview_required": False,
             }]
         return actions
+
+    async def list_documents(self, limit: Optional[int] = 100) -> List[Dict[str, Any]]:
+        return self.store.list_docs(limit=limit)
+
+    async def get_document(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        meta = self.store.get_doc_meta(doc_id)
+        if not meta:
+            return None
+        return meta
+
+    async def delete_document(self, doc_id: str) -> bool:
+        return self.store.delete_doc(doc_id)
+
+    async def clear_documents(self) -> None:
+        self.store.clear()
+
+    async def document_stats(self) -> Dict[str, Any]:
+        return {
+            "count": self.store.count_docs(),
+        }

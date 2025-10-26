@@ -11,3 +11,8 @@ pyinstaller
 Pillow
 pywebview
 pyobjc
+playwright
+websockets
+psutil
+keyring
+cryptography

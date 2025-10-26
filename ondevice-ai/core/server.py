@@ -5,14 +5,16 @@ import asyncio
 import json
 import threading
 from concurrent import futures
-from typing import Any, Coroutine, Iterable
+from typing import Any, Coroutine, Iterable, cast
 
 import grpc
 
-from core import assistant_pb2 as pb
+from core import assistant_pb2 as pb_module
 from core import assistant_pb2_grpc as rpc
 from core.audit import write_event
 from core.orchestrator import Orchestrator
+
+pb = cast(Any, pb_module)
 
 
 _LOOP = asyncio.new_event_loop()

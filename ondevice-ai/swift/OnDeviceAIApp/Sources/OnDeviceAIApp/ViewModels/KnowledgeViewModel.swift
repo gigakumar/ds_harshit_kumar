@@ -64,17 +64,17 @@ final class KnowledgeViewModel: ObservableObject {
         Task {
             do {
                 _ = try await client.index(text: trimmed, source: newDocumentSource.isEmpty ? "manual" : newDocumentSource)
-                await MainActor {
+                await MainActor.run {
                     newDocumentText = ""
                     errorMessage = nil
                 }
                 await refresh()
             } catch {
-                await MainActor {
+                await MainActor.run {
                     errorMessage = error.localizedDescription
                 }
             }
-            await MainActor {
+            await MainActor.run {
                 isIndexing = false
             }
         }

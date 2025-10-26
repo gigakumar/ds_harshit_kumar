@@ -32,6 +32,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: AppSection? = .planner
 
     var body: some View {
@@ -41,20 +42,37 @@ struct RootView: View {
             } detail: {
                 detail
                     .padding(.horizontal, 32)
-                    .padding(.vertical, 28)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        ConnectionStatusHero(
+                            status: appState.connectionStatus,
+                            backendState: appState.backendLaunchState,
+                            refreshAction: {
+                                Task { await appState.refreshConnectionStatus(force: true) }
+                            },
+                            openSettings: {
+                                selection = .settings
+                            }
+                        )
+                        .padding(.horizontal, 32)
+                        .padding(.top, 24)
+                    }
             }
             .navigationSplitViewStyle(.balanced)
         }
         .task {
             await reload()
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await appState.refreshConnectionStatus(force: true) }
+        }
     }
 
     private var sidebar: some View {
         List(AppSection.allCases, selection: $selection) { section in
-            Label(section.title, systemImage: section.icon)
-                .padding(.vertical, 6)
-                .foregroundStyle(.white)
+            sidebarRow(for: section)
         }
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
@@ -83,5 +101,54 @@ struct RootView: View {
         await appState.knowledgeViewModel.refresh()
         await appState.pluginsViewModel.refresh()
         await appState.automationDashboard.refresh()
+        await appState.refreshConnectionStatus(force: false)
+    }
+
+    @ViewBuilder
+    private func sidebarRow(for section: AppSection) -> some View {
+        HStack(spacing: 14) {
+            Label(section.title, systemImage: section.icon)
+                .labelStyle(.titleAndIcon)
+                .foregroundStyle(.white)
+            Spacer(minLength: 8)
+            if section == .knowledge, let documents = appState.connectionStatus.health?.documentCount {
+                sidebarBadge(text: "\(documents)")
+            }
+            if section == .automation {
+                statusDot
+            }
+        }
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+    }
+
+    private func sidebarBadge(text: String) -> some View {
+        Text(text)
+            .font(.system(.caption, design: .rounded, weight: .medium))
+            .foregroundColor(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.18))
+            )
+    }
+
+    private var statusDot: some View {
+        let color: Color
+        if appState.connectionStatus.isChecking {
+            color = .blue.opacity(0.9)
+        } else if appState.connectionStatus.isConnected {
+            color = .green.opacity(0.85)
+        } else {
+            color = .red.opacity(0.85)
+        }
+        return Circle()
+            .fill(color)
+            .frame(width: 10, height: 10)
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
+            )
     }
 }

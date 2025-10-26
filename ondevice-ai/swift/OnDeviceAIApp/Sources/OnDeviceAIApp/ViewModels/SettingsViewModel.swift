@@ -56,12 +56,12 @@ final class SettingsViewModel: ObservableObject {
         Task {
             do {
                 let updated = try await client.update(permissions: permissions)
-                await MainActor {
+                await MainActor.run {
                     self.permissions = updated
                     self.errorMessage = nil
                 }
             } catch {
-                await MainActor {
+                await MainActor.run {
                     self.permissions = previous
                     self.errorMessage = error.localizedDescription
                 }
@@ -75,17 +75,17 @@ final class SettingsViewModel: ObservableObject {
         Task {
             do {
                 let updated = try await client.updateModelConfiguration(profileID: profileID)
-                await MainActor {
+                await MainActor.run {
                     self.modelConfiguration = updated
                     self.errorMessage = nil
                     self.onProfileUpdated?()
                 }
             } catch {
-                await MainActor {
+                await MainActor.run {
                     self.errorMessage = error.localizedDescription
                 }
             }
-            await MainActor { self.isUpdatingModel = false }
+            await MainActor.run { self.isUpdatingModel = false }
         }
     }
 }

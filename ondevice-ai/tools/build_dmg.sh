@@ -29,5 +29,5 @@ if [[ -n "${CODESIGN_ID:-}" ]]; then
 fi
 
 echo "Creating DMG at $DMG_PATH..."
-hdiutil create -volname "$VOLNAME" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+hdiutil create -volname "$VOLNAME" -srcfolder "$APP_PATH" -ov -format UDZO -fs HFS+J "$DMG_PATH"
 echo "DMG created: $DMG_PATH"

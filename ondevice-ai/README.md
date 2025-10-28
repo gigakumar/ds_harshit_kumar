@@ -101,15 +101,6 @@ The resulting `dist/OnDeviceAI.app` contains:
 - `plugins/` manifests.
 - (Optional) `swift/OnDeviceAIApp/dist` assets if you build the Swift UI as a web wrapper.
 
-> ℹ️ **Repository artifact split** – GitHub enforces a 100 MB limit, so `artifacts/OnDeviceAIApp.dmg` ships as two chunks: `OnDeviceAIApp.dmg.part01` and `OnDeviceAIApp.dmg.part02`. Reconstitute the DMG before signing or distribution:
-
-```bash
-cat artifacts/OnDeviceAIApp.dmg.part01 artifacts/OnDeviceAIApp.dmg.part02 > artifacts/OnDeviceAIApp.dmg
-shasum -a 256 artifacts/OnDeviceAIApp.dmg && cat artifacts/OnDeviceAIApp.dmg.sha256
-```
-
-The SHA256 hash should match the value stored in `OnDeviceAIApp.dmg.sha256`.
-
 ## Refined SwiftUI client
 
 - **Planner** – goal templates carousel, sliders for temperature/tokens, and knowledge toggle.

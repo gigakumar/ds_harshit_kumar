@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "labels": [
+    {
+      "id": "shell_command",
+      "examples": [
+        "run `ls -la` inside the downloads directory",
+        "execute the command `brew update`",
+        "run a shell command to list running processes",
+        "execute `python main.py` from the automation project",
+        "run shell to clean up *.log files"
+      ]
+    },
+    {
+      "id": "file_write",
+      "examples": [
+        "write meeting notes to /tmp/notes.txt",
+        "append \"done\" to progress.md",
+        "create a markdown summary file called report.md",
+        "update the config.json file with new settings",
+        "log results into output/log.txt"
+      ]
+    },
+    {
+      "id": "file_read",
+      "examples": [
+        "read the README.md file",
+        "show the contents of config.yaml",
+        "open requirements.txt and display it",
+        "inspect the JSON file data/sample.json",
+        "read notes.txt from the project root"
+      ]
+    },
+    {
+      "id": "browser_research",
+      "examples": [
+        "search the web for mac automation",
+        "open https://news.ycombinator.com",
+        "lookup documentation for pytest",
+        "research apple script examples",
+        "visit the developer portal"
+      ]
+    },
+    {
+      "id": "app_launch",
+      "examples": [
+        "launch Safari",
+        "open the Notes app",
+        "start Terminal application",
+        "launch Slack on mac",
+        "open Xcode"
+      ]
+    },
+    {
+      "id": "applescript",
+      "examples": [
+        "run an applescript to toggle do not disturb",
+        "execute apple script to move mouse",
+        "send applescript telling Safari to refresh",
+        "perform apple script that creates a reminder",
+        "tell application Finder to open documents"
+      ]
+    }
+  ]
+}

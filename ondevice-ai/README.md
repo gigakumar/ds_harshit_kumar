@@ -5,7 +5,7 @@ Local-first automation stack with an opinionated SwiftUI client, configurable mo
 ## Features
 
 - 📦 **Self-contained packaging** – package the automation daemon, configuration, plugins, and bundled TinyLlama weights into a single `.app`.
-- 🧠 **Model profiles** – toggle between the bundled TinyLlama model, an Ollama host, or OpenAI GPT-4o-mini directly from Settings.
+- 🧠 **Model profiles** – toggle between the bundled TinyLlama model, the on-device planner brain, an Ollama host, or OpenAI GPT-4o-mini directly from Settings.
 - 🕹️ **Automation dashboard** – responsive quick actions, live permission footprint, and model status at a glance.
 - 🗂️ **Knowledge console** – index raw snippets from the UI, semantic search, and document drill-down with adaptive layout.
 - 🧰 **Planning controls** – adjust temperature, token budget, and knowledge grounding when generating automation plans.
@@ -57,6 +57,24 @@ Run tests:
 pytest -q
 ```
 
+## Local planner brain
+
+The default runtime now ships with a lightweight ML classifier that maps natural language goals onto capability-aware automation plans. The planner lives in `core/local_planner.py` and is bundled with labeled training data in `ml_models/planner/training_data.json`.
+
+- Goals are vectorized with a hashed embedding and classified against template centroids.
+- Each template renders a structured sequence of `system.*` or `browser.*` actions with JSON payloads ready for the `SystemAgent`.
+- The HTTP runtime exposes the planner through `/predict`, and the orchestrator consumes it via the existing `ModelAdapter` without additional wiring.
+
+You can switch to the pure rule-based engine or remote models by updating `config/automation.yaml`:
+
+```yaml
+model:
+	backend: planner   # or mlx, ollama, openai
+	mode: ml
+```
+
+Extend the planner by adding labeled examples to `training_data.json` or by swapping in a custom dataset path when constructing `LocalPlannerModel`.
+
 ## Bundled model workflow
 
 The default profile targets TinyLlama 1.1B chat (quantized for MLX). Two options exist:
@@ -82,6 +100,15 @@ The resulting `dist/OnDeviceAI.app` contains:
 - `config/automation.yaml` and editable profiles.
 - `plugins/` manifests.
 - (Optional) `swift/OnDeviceAIApp/dist` assets if you build the Swift UI as a web wrapper.
+
+> ℹ️ **Repository artifact split** – GitHub enforces a 100 MB limit, so `artifacts/OnDeviceAIApp.dmg` ships as two chunks: `OnDeviceAIApp.dmg.part01` and `OnDeviceAIApp.dmg.part02`. Reconstitute the DMG before signing or distribution:
+
+```bash
+cat artifacts/OnDeviceAIApp.dmg.part01 artifacts/OnDeviceAIApp.dmg.part02 > artifacts/OnDeviceAIApp.dmg
+shasum -a 256 artifacts/OnDeviceAIApp.dmg && cat artifacts/OnDeviceAIApp.dmg.sha256
+```
+
+The SHA256 hash should match the value stored in `OnDeviceAIApp.dmg.sha256`.
 
 ## Refined SwiftUI client
 

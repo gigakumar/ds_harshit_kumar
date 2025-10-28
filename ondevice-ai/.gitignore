@@ -21,3 +21,4 @@ build/
 dist/
 swift/OnDeviceAIApp/.build/
 swift/OnDeviceAIApp/dist/
+artifacts/OnDeviceAIApp.dmg

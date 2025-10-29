@@ -31,6 +31,8 @@ struct ControlCenterSheet: View {
     let openSettings: () -> Void
 
     @State private var selectedTab: Tab
+    @State private var commandQuery: String = ""
+    @State private var expandedCategories: Set<String> = Set(Self.defaultCommandCategories.map(\.id))
 
     init(selectedTab: Tab, dashboardViewModel: AutomationDashboardViewModel, openSettings: @escaping () -> Void) {
         _selectedTab = State(initialValue: selectedTab)
@@ -118,56 +120,199 @@ struct ControlCenterSheet: View {
             GlassSectionHeader(title: "Quick tools", systemImage: "wrench.and.screwdriver")
 
             GlassContainer {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Themes")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundColor(theme.secondaryText)
-                    HStack(spacing: 12) {
-                        ForEach(ThemePreference.allCases) { preference in
-                            Button {
-                                appState.applyTheme(preference)
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: preference.iconName)
-                                    Text(preference.title)
+                VStack(alignment: .leading, spacing: 16) {
+                    commandSearchField
+
+                    ForEach(commandCategories) { category in
+                        let isSearchActive = trimmedCommandQuery.isEmpty == false
+                        let disclosureBinding = isSearchActive ? .constant(true) : binding(for: category)
+
+                        DisclosureGroup(isExpanded: disclosureBinding) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(category.commands) { command in
+                                    Button {
+                                        perform(command: command.action)
+                                    } label: {
+                                        HStack(spacing: 14) {
+                                            Image(systemName: command.icon)
+                                                .font(.system(size: 18, weight: .medium))
+                                                .foregroundColor(theme.accent)
+
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(command.title)
+                                                    .font(.system(.body, design: .rounded))
+                                                    .foregroundColor(theme.primaryText)
+                                                Text(command.subtitle)
+                                                    .font(.system(.caption, design: .rounded))
+                                                    .foregroundColor(theme.secondaryText)
+                                            }
+
+                                            Spacer()
+                                        }
+                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 12)
+                                        .background(theme.quickActionBackground.opacity(0.45), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 14)
-                                .background(theme.quickActionBackground, in: Capsule())
-                                .overlay(
-                                    Capsule().stroke(preference == appState.themePreference ? theme.accent.opacity(0.6) : theme.cardStroke, lineWidth: preference == appState.themePreference ? 2 : 1)
-                                )
                             }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-
-            GlassContainer {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Maintenance")
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundColor(theme.secondaryText)
-                    HStack(spacing: 12) {
-                        Button {
-                            Task { await appState.refreshAll() }
+                            .padding(.top, 6)
                         } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
+                            HStack(spacing: 10) {
+                                Image(systemName: category.icon)
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text(category.title)
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                if trimmedCommandQuery.isEmpty {
+                                    Image(systemName: expandedCategories.contains(category.id) ? "chevron.down" : "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(theme.secondaryText)
+                                }
+                            }
+                            .foregroundColor(theme.primaryText)
                         }
-                        .buttonStyle(GlassToolbarButtonStyle())
-
-                        Button {
-                            openSettings()
-                        } label: {
-                            Label("Settings", systemImage: "gearshape")
-                        }
-                        .buttonStyle(GlassToolbarButtonStyle())
-
-                        Spacer()
+                        .padding(.vertical, 4)
                     }
                 }
             }
         }
     }
+
+    private var commandSearchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(theme.secondaryText)
+            TextField("Search tools, status, or themes", text: $commandQuery)
+                .textFieldStyle(.plain)
+                .foregroundColor(theme.primaryText)
+                .disableAutocorrection(true)
+            if trimmedCommandQuery.isEmpty == false {
+                Button {
+                    commandQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(theme.secondaryText.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(theme.quickActionBackground.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var trimmedCommandQuery: String {
+        commandQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var commandCategories: [CommandCategory] {
+        let base = Self.defaultCommandCategories
+        guard trimmedCommandQuery.isEmpty == false else { return base }
+        return base.compactMap { $0.filtered(by: trimmedCommandQuery) }
+    }
+
+    private func binding(for category: CommandCategory) -> Binding<Bool> {
+        Binding(
+            get: { expandedCategories.contains(category.id) },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedCategories.insert(category.id)
+                } else {
+                    expandedCategories.remove(category.id)
+                }
+            }
+        )
+    }
+
+    private func perform(command action: CommandAction) {
+        switch action {
+        case .showSystemStatus:
+            withAnimation { selectedTab = .status }
+        case .openAutomationLog:
+            withAnimation { selectedTab = .logs }
+        case .openSettingsTools:
+            withAnimation { selectedTab = .tools }
+        case .refreshAllData:
+            appState.refreshAll()
+        case .jumpToSettings:
+            withAnimation { openSettings() }
+        case .summarizeInbox:
+            if let quickAction = dashboardViewModel.quickActions.first(where: { $0.type == .summarizeInbox }) {
+                dashboardViewModel.trigger(action: quickAction)
+            }
+            withAnimation { selectedTab = .tools }
+        }
+    }
+}
+
+private extension ControlCenterSheet {
+    enum CommandAction: String, CaseIterable, Identifiable {
+        case showSystemStatus
+        case openAutomationLog
+        case openSettingsTools
+        case refreshAllData
+        case jumpToSettings
+        case summarizeInbox
+
+        var id: String { rawValue }
+    }
+
+    struct CommandItem: Identifiable {
+        let action: CommandAction
+        let title: String
+        let subtitle: String
+        let icon: String
+
+        var id: CommandAction { action }
+
+        func matches(_ query: String) -> Bool {
+            guard query.isEmpty == false else { return true }
+            return title.localizedCaseInsensitiveContains(query) || subtitle.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    struct CommandCategory: Identifiable {
+        let id: String
+        let title: String
+        let icon: String
+        let commands: [CommandItem]
+
+        func filtered(by query: String) -> CommandCategory? {
+            let filteredCommands = commands.filter { $0.matches(query) }
+            guard filteredCommands.isEmpty == false else { return nil }
+            return CommandCategory(id: id, title: title, icon: icon, commands: filteredCommands)
+        }
+    }
+
+    static let defaultCommandCategories: [CommandCategory] = [
+        CommandCategory(
+            id: "system",
+            title: "System",
+            icon: "waveform.path.ecg",
+            commands: [
+                CommandItem(action: .showSystemStatus, title: "Show system status", subtitle: "Inspect daemon connection and uptime", icon: "waveform") ,
+                CommandItem(action: .openAutomationLog, title: "Open automation log", subtitle: "Review recent automation events", icon: "clock.arrow.circlepath"),
+                CommandItem(action: .refreshAllData, title: "Refresh all data", subtitle: "Reload settings, knowledge, and plugins", icon: "arrow.clockwise")
+            ]
+        ),
+        CommandCategory(
+            id: "settings",
+            title: "Settings",
+            icon: "gearshape",
+            commands: [
+                CommandItem(action: .openSettingsTools, title: "Open settings tools", subtitle: "Quick access to themes and maintenance", icon: "wrench.and.screwdriver"),
+                CommandItem(action: .jumpToSettings, title: "Jump to settings", subtitle: "Manage permissions and connections", icon: "gearshape")
+            ]
+        ),
+        CommandCategory(
+            id: "automations",
+            title: "Automations",
+            icon: "sparkles",
+            commands: [
+                CommandItem(action: .summarizeInbox, title: "Summarize inbox", subtitle: "Scan mail and highlight follow-ups", icon: "tray.full")
+            ]
+        )
+    ]
 }

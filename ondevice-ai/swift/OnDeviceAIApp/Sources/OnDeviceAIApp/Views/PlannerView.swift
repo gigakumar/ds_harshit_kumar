@@ -3,6 +3,7 @@ import SwiftUI
 struct PlannerView: View {
     @ObservedObject var viewModel: PlannerViewModel
     @FocusState private var goalFieldFocused: Bool
+    @Environment(\.themeDescriptor) private var theme
 
     private struct GoalTemplate: Identifiable {
         let id = UUID()
@@ -30,8 +31,8 @@ struct PlannerView: View {
                             .textFieldStyle(.plain)
                             .focused($goalFieldFocused)
                             .padding(14)
-                            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .foregroundColor(.white)
+                            .background(theme.quickActionBackground.opacity(0.65), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .foregroundColor(theme.primaryText)
 
                         HStack(spacing: 12) {
                             Button(action: viewModel.runPlanning) {
@@ -44,7 +45,7 @@ struct PlannerView: View {
                             if viewModel.isPlanning {
                                 ProgressView()
                                     .progressViewStyle(.circular)
-                                    .tint(.white)
+                                    .tint(theme.accent)
                             }
 
                             Spacer()
@@ -52,7 +53,7 @@ struct PlannerView: View {
                             if let executionStatus = viewModel.executionStatus {
                                 Text(executionStatus)
                                     .font(.footnote)
-                                    .foregroundStyle(.white.opacity(0.75))
+                                    .foregroundStyle(theme.secondaryText)
                             }
                         }
                     }
@@ -87,22 +88,27 @@ struct PlannerView: View {
                                                 HStack {
                                                     Image(systemName: template.icon)
                                                         .font(.system(size: 22, weight: .semibold))
-                                                    Spacer()
+                                                        .foregroundColor(theme.accent)
+                                                    Spacer(minLength: 0)
                                                     Image(systemName: "arrow.right")
                                                         .font(.caption)
-                                                        .foregroundColor(.white.opacity(0.7))
+                                                        .foregroundColor(theme.secondaryText)
                                                 }
                                                 Text(template.title)
                                                     .font(.system(.headline, design: .rounded))
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(theme.primaryText)
                                                 Text(template.subtitle)
                                                     .font(.system(.caption, design: .rounded))
-                                                    .foregroundColor(.white.opacity(0.7))
+                                                    .foregroundColor(theme.secondaryText)
                                                     .multilineTextAlignment(.leading)
                                             }
                                             .padding(16)
                                             .frame(width: 220, alignment: .leading)
-                                            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                            .background(theme.quickActionBackground.opacity(0.45), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                    .stroke(theme.accent.opacity(0.18), lineWidth: 1)
+                                            )
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -119,7 +125,7 @@ struct PlannerView: View {
                                 .foregroundColor(.yellow)
                             Text(planError)
                                 .font(.footnote)
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundColor(theme.secondaryText)
                         }
                     }
                 }
@@ -133,7 +139,7 @@ struct PlannerView: View {
                                     HStack {
                                         Text(action.name.capitalized)
                                             .font(.system(.headline, design: .rounded))
-                                            .foregroundColor(.white)
+                                            .foregroundColor(theme.primaryText)
                                         Spacer()
                                         if action.sensitive {
                                             GlassTag(text: "Sensitive", tint: Color.red.opacity(0.35))
@@ -145,9 +151,9 @@ struct PlannerView: View {
                                     if action.payload.isEmpty == false {
                                         Text(action.payload)
                                             .font(.system(.callout, design: .monospaced))
-                                            .foregroundColor(.white.opacity(0.85))
+                                            .foregroundColor(theme.secondaryText)
                                             .padding(12)
-                                            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                            .background(theme.quickActionBackground.opacity(0.4), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                                     }
                                     Button {
                                         viewModel.execute(action: action)
@@ -174,16 +180,16 @@ struct PlannerView: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(hit.preview.isEmpty ? hit.text : hit.preview)
                                         .font(.system(.callout, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.85))
+                                        .foregroundColor(theme.primaryText)
                                     HStack {
                                         GlassTag(text: String(format: "%.2f", hit.score), tint: Color.green.opacity(0.35))
                                         Text(hit.docID)
                                             .font(.caption2)
-                                            .foregroundColor(.white.opacity(0.55))
+                                            .foregroundColor(theme.secondaryText)
                                     }
                                 }
                                 .padding(12)
-                                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .background(theme.quickActionBackground.opacity(0.35), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                             }
                         }
                     }
@@ -192,7 +198,7 @@ struct PlannerView: View {
             .padding(.bottom, 40)
         }
         .scrollIndicators(.hidden)
-        .foregroundColor(.white)
+        .foregroundColor(theme.primaryText)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 goalFieldFocused = viewModel.goal.isEmpty
@@ -205,21 +211,23 @@ struct PlannerView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Temperature", systemImage: "thermometer.medium")
                     .font(.system(.subheadline, design: .rounded))
-                    .foregroundColor(.white.opacity(0.75))
+                    .foregroundColor(theme.secondaryText)
                 Slider(value: $viewModel.temperature, in: 0...1, step: 0.05)
+                    .tint(theme.accent)
                 Text(String(format: "%.2f", viewModel.temperature))
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundColor(theme.secondaryText.opacity(0.85))
             }
 
             VStack(alignment: .leading, spacing: 10) {
                 Label("Max tokens", systemImage: "number")
                     .font(.system(.subheadline, design: .rounded))
-                    .foregroundColor(.white.opacity(0.75))
+                    .foregroundColor(theme.secondaryText)
                 Slider(value: $viewModel.maxTokens, in: 64...768, step: 32)
+                    .tint(theme.accent)
                 Text("\(Int(viewModel.maxTokens)) tokens")
                     .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundColor(theme.secondaryText.opacity(0.85))
             }
 
             Toggle(isOn: $viewModel.includeKnowledge) {
@@ -228,10 +236,11 @@ struct PlannerView: View {
                         .font(.system(.body, design: .rounded))
                     Text("Fetch vectors to ground your plan.")
                         .font(.system(.caption, design: .rounded))
-                        .foregroundColor(.white.opacity(0.68))
+                        .foregroundColor(theme.secondaryText)
                 }
             }
             .toggleStyle(.switch)
+            .tint(theme.accent)
         }
     }
 }

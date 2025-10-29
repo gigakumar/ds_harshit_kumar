@@ -1,3 +1,4 @@
+import json
 from importlib import reload
 from textwrap import dedent
 
@@ -164,6 +165,31 @@ def test_model_mode_toggle(tmp_path, monkeypatch):
     import tools.mlx_runtime as runtime
 
     reload(runtime)
+
+
+def test_predict_generates_structured_plan(monkeypatch):
+  import tools.mlx_runtime as runtime
+
+  fake_actions = [
+    {
+      "name": "system.files.write",
+      "payload": json.dumps({"path": "notes.txt", "content": "hello"}),
+      "sensitive": False,
+      "preview_required": True,
+    }
+  ]
+
+  def _fake_generate(prompt: str, **_: object) -> str:
+    return json.dumps(fake_actions)
+
+  monkeypatch.setattr(runtime, "generate", _fake_generate)
+
+  with runtime.app.test_client() as client:
+    resp = client.post("/predict", json={"prompt": "write down meeting notes"})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    actions = json.loads(data["text"])
+    assert actions[0]["name"] == "system.files.write"
 
     with runtime.app.test_client() as client:
         resp = client.get("/model")

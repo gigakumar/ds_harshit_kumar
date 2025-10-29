@@ -28,6 +28,8 @@ class SandboxPermissions:
     calendar_access: bool = False
     mail_access: bool = False
     browser_access: bool = False
+    shell_access: bool = False
+    automation_access: bool = False
 
     def allows(self, permission: str) -> bool:
         try:

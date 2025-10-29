@@ -4,6 +4,7 @@ enum ThemePreference: String, CaseIterable, Identifiable {
     case system
     case midnight
     case lightBlue
+    case sunset
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum ThemePreference: String, CaseIterable, Identifiable {
         case .system: return "Match System"
         case .midnight: return "Midnight"
         case .lightBlue: return "Lightwave"
+        case .sunset: return "Sunset Glow"
         }
     }
 
@@ -20,6 +22,7 @@ enum ThemePreference: String, CaseIterable, Identifiable {
         case .system: return "Follow macOS appearance"
         case .midnight: return "Deep glass dark mode"
         case .lightBlue: return "Bright ice-blue workspace"
+        case .sunset: return "Warm gradient with bold accents"
         }
     }
 
@@ -28,6 +31,7 @@ enum ThemePreference: String, CaseIterable, Identifiable {
         case .system: return "macwindow"
         case .midnight: return "moon.stars"
         case .lightBlue: return "sun.max"
+        case .sunset: return "sunset"
         }
     }
 }
@@ -100,6 +104,29 @@ extension ThemeDescriptor {
         statusChecking: Color(red: 0/255, green: 122/255, blue: 255/255).opacity(0.9),
         statusConnected: Color(red: 38/255, green: 172/255, blue: 65/255).opacity(0.85),
         statusError: Color(red: 222/255, green: 68/255, blue: 55/255).opacity(0.85)
+    )
+
+    static let sunset = ThemeDescriptor(
+        preference: .sunset,
+        backgroundGradient: [
+            Color(red: 69/255, green: 17/255, blue: 65/255).opacity(0.95),
+            Color(red: 175/255, green: 54/255, blue: 62/255).opacity(0.88),
+            Color(red: 253/255, green: 160/255, blue: 102/255).opacity(0.85)
+        ],
+        primaryText: Color.white,
+        secondaryText: Color.white.opacity(0.78),
+        accent: Color(red: 255/255, green: 207/255, blue: 86/255),
+        cardStroke: Color.white.opacity(0.18),
+        chipBackground: Color(red: 255/255, green: 207/255, blue: 86/255).opacity(0.3),
+        chipText: Color.white,
+        quickActionBackground: Color.white.opacity(0.08),
+        quickActionStroke: Color.white.opacity(0.22),
+        cardShadow: Color.black.opacity(0.28),
+        sidebarBackground: Color.white.opacity(0.05),
+        listSelection: Color(red: 255/255, green: 207/255, blue: 86/255).opacity(0.35),
+        statusChecking: Color(red: 255/255, green: 130/255, blue: 67/255).opacity(0.9),
+        statusConnected: Color(red: 112/255, green: 223/255, blue: 155/255).opacity(0.92),
+        statusError: Color(red: 238/255, green: 75/255, blue: 106/255).opacity(0.88)
     )
 
     static let automatic = midnight

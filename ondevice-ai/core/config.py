@@ -91,8 +91,12 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "permissions": {
         "file_access": False,
+        "network_access": False,
         "calendar_access": False,
         "mail_access": False,
+        "browser_access": False,
+        "shell_access": False,
+        "automation_access": False,
     },
     "auth": {
         "bootstrap_token": "",

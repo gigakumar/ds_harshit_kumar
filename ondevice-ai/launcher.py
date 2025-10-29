@@ -2571,6 +2571,9 @@ class _Bridge:
             "network_access": bool(perms.get("network_access", False)),
             "calendar_access": bool(perms.get("calendar_access", False)),
             "mail_access": bool(perms.get("mail_access", False)),
+            "browser_access": bool(perms.get("browser_access", False)),
+            "shell_access": bool(perms.get("shell_access", False)),
+            "automation_access": bool(perms.get("automation_access", False)),
         }
         return safe
 
@@ -2578,7 +2581,15 @@ class _Bridge:
         config = get_config()
         perms = config.setdefault("permissions", {})
         for key, value in updates.items():
-            if key in {"file_access", "network_access", "calendar_access", "mail_access"}:
+            if key in {
+                "file_access",
+                "network_access",
+                "calendar_access",
+                "mail_access",
+                "browser_access",
+                "shell_access",
+                "automation_access",
+            }:
                 perms[key] = bool(value)
         save_config(config)
         sandbox_perms = SandboxPermissions(
@@ -2586,6 +2597,9 @@ class _Bridge:
             network_access=bool(perms.get("network_access", False)),
             calendar_access=bool(perms.get("calendar_access", False)),
             mail_access=bool(perms.get("mail_access", False)),
+            browser_access=bool(perms.get("browser_access", False)),
+            shell_access=bool(perms.get("shell_access", False)),
+            automation_access=bool(perms.get("automation_access", False)),
         )
         try:
             self._handle.sandbox.update_permissions(sandbox_perms)

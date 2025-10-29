@@ -25,6 +25,11 @@ from core.config import (
 )
 from core.plugins import PluginManifest
 
+try:  # pragma: no cover - optional dependency
+    from huggingface_hub import InferenceClient  # type: ignore[import-untyped]
+except Exception:  # pragma: no cover - gracefully degrade when hub not available
+    InferenceClient = None  # type: ignore
+
 
 _BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
 
@@ -46,7 +51,6 @@ def _resolve_models_root() -> Path:
 
 
 MODELS_ROOT = _resolve_models_root()
-PLANNER_DIR = MODELS_ROOT / "planner"
 _PLUGINS_DIR = Path(os.environ.get("PLUGINS_DIR", Path(__file__).resolve().parents[1] / "plugins"))
 
 CONFIG = get_config()
@@ -61,8 +65,12 @@ _MODEL_VERSION: str | None = None
 
 _PERMISSIONS: Dict[str, bool] = {
     "file_access": bool(CONFIG.get("permissions", {}).get("file_access", False)),
+    "network_access": bool(CONFIG.get("permissions", {}).get("network_access", False)),
     "calendar_access": bool(CONFIG.get("permissions", {}).get("calendar_access", False)),
     "mail_access": bool(CONFIG.get("permissions", {}).get("mail_access", False)),
+    "browser_access": bool(CONFIG.get("permissions", {}).get("browser_access", False)),
+    "shell_access": bool(CONFIG.get("permissions", {}).get("shell_access", False)),
+    "automation_access": bool(CONFIG.get("permissions", {}).get("automation_access", False)),
 }
 
 
@@ -108,24 +116,46 @@ def _fallback_embed(text: str) -> np.ndarray:
 
 
 def _fallback_generate(prompt: str, **kwargs: Any) -> str:
-    steps = [line.strip() for line in prompt.split(".") if line.strip()]
-    if not steps:
-        steps = [prompt.strip() or "analyze request"]
-    return json.dumps(
-        [
-            {
-                "name": f"step_{i+1}",
-                "payload": json.dumps({"instruction": step}) if not step.startswith("{") else step,
-                "sensitive": False,
-                "preview_required": False,
-            }
-            for i, step in enumerate(steps[:4])
-        ]
-    )
+    goal = (prompt or "").strip()
+    payload = {
+        "path": "plan.txt",
+        "content": goal or "No goal provided; document context for operator review.",
+        "append": False,
+    }
+    action = {
+        "name": "system.files.write",
+        "payload": json.dumps(payload),
+        "sensitive": False,
+        "preview_required": False,
+    }
+    return json.dumps([action])
 
 
 embed_text: Callable[[str], np.ndarray] = _fallback_embed
 generate: Callable[..., str] = _fallback_generate
+
+
+def _extract_json_plan(raw: str) -> str | None:
+    """Extract a JSON array payload from a raw LLM response."""
+    if not raw:
+        return None
+    candidate = raw.strip()
+    if candidate.startswith("[") and candidate.endswith("]"):
+        try:
+            json.loads(candidate)
+            return candidate
+        except Exception:
+            pass
+    start = candidate.find("[")
+    end = candidate.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        snippet = candidate[start : end + 1]
+        try:
+            json.loads(snippet)
+            return snippet
+        except Exception:
+            return None
+    return None
 
 
 def _load_backend(model_conf: Dict[str, Any]) -> Tuple[Callable[[str], np.ndarray], Callable[..., str]]:
@@ -220,6 +250,73 @@ def _load_backend(model_conf: Dict[str, Any]) -> Tuple[Callable[[str], np.ndarra
             embed_fn = _openai_embed
             generate_fn = _openai_generate
 
+    elif backend in {"hf", "huggingface", "huggingface_hub"}:
+        hf_conf = model_conf.get("huggingface", {})
+        model_id = str(
+            hf_conf.get(
+                "model_id",
+                os.environ.get("HF_MODEL_ID", "mistralai/Mistral-7B-Instruct-v0.2"),
+            )
+        )
+        token = hf_conf.get("token") or os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+        embed_model = str(
+            hf_conf.get("embedding_model", os.environ.get("HF_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2"))
+        )
+
+        if InferenceClient is not None:
+            try:
+                client = InferenceClient(model=model_id, token=token)
+            except Exception:
+                client = None  # type: ignore
+        else:
+            client = None  # type: ignore
+
+        def _hf_embed(text: str) -> np.ndarray:
+            if client is None:
+                return _fallback_embed(text)
+            try:
+                result = client.feature_extraction(text, model=embed_model)
+                vector = np.array(result, dtype=np.float32)
+                if vector.ndim == 2:
+                    vector = vector.mean(axis=0)
+                norm = np.linalg.norm(vector) or 1.0
+                return (vector / norm).astype(np.float32)
+            except Exception:
+                return _fallback_embed(text)
+
+        def _hf_generate(prompt: str, **kwargs: Any) -> str:
+            if client is None:
+                return _fallback_generate(prompt, **kwargs)
+            temperature = float(kwargs.get("temperature", 0.2))
+            max_tokens = int(kwargs.get("max_tokens", 512))
+            top_p = float(kwargs.get("top_p", 0.95))
+            system_prompt = (
+                "You are an automation planner. Respond with JSON array of actions using keys "
+                "name, payload (JSON string), sensitive, preview_required."
+            )
+            composed_prompt = f"{system_prompt}\n\nGoal: {prompt}\nResponse:"
+            try:
+                response = client.text_generation(
+                    composed_prompt,
+                    max_new_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                )
+            except Exception:
+                return _fallback_generate(prompt, **kwargs)
+
+            if isinstance(response, str):
+                raw_text = response
+            else:  # huggingface_hub may return a dict-like object
+                raw_text = getattr(response, "generated_text", "")
+            extracted = _extract_json_plan(raw_text)
+            if extracted:
+                return extracted
+            return _fallback_generate(prompt, **kwargs)
+
+        embed_fn = _hf_embed
+        generate_fn = _hf_generate
+
     else:  # MLX backend
         try:  # pragma: no cover - optional dependency
             from mlx_lm import load_model  # type: ignore[import]
@@ -234,8 +331,6 @@ def _load_backend(model_conf: Dict[str, Any]) -> Tuple[Callable[[str], np.ndarra
                 planner_target = Path(env_target)
             elif target_path:
                 planner_target = Path(target_path)
-            elif PLANNER_DIR.exists():
-                planner_target = PLANNER_DIR
             else:
                 planner_target = None
 

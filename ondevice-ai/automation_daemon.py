@@ -320,6 +320,9 @@ def start_daemon(
         network_access=bool(permissions_cfg.get("network_access", False)),
         calendar_access=bool(permissions_cfg.get("calendar_access", False)),
         mail_access=bool(permissions_cfg.get("mail_access", False)),
+        browser_access=bool(permissions_cfg.get("browser_access", False)),
+        shell_access=bool(permissions_cfg.get("shell_access", False)),
+        automation_access=bool(permissions_cfg.get("automation_access", False)),
     )
     sandbox_settings = config.get("sandbox", {}) if isinstance(config, dict) else {}
     if not isinstance(sandbox_settings, dict):

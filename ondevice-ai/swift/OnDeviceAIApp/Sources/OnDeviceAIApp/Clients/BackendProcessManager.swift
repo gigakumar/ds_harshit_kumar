@@ -201,7 +201,7 @@ final class BackendProcessManager: ObservableObject {
     }
 
     private func resolveLaunchConfiguration() throws -> LaunchConfiguration {
-        if let packagedBinary = locatePackagedBinary(), FileManager.default.isExecutableFile(atPath: packagedBinary.path) {
+        if let packagedBinary = locatePackagedBinary() {
             let workingDirectory = packagedBinary.deletingLastPathComponent()
             return LaunchConfiguration(
                 executable: packagedBinary,
@@ -237,15 +237,32 @@ final class BackendProcessManager: ObservableObject {
     }
 
     private func locatePackagedBinary() -> URL? {
-        // Allow distributing the PyInstaller binary alongside the Swift app build.
-        let candidate = locateRepositoryRoot().appendingPathComponent("build/OnDeviceAI/OnDeviceAI")
-        if FileManager.default.fileExists(atPath: candidate.path) {
-            return candidate
+        let fileManager = FileManager.default
+
+        var candidates: [URL] = []
+
+        let bundleURL = Bundle.main.bundleURL
+        let backendRoot = bundleURL.appendingPathComponent("Contents/Resources/backend", isDirectory: true)
+        candidates.append(backendRoot.appendingPathComponent("mahi_backend"))
+        candidates.append(backendRoot.appendingPathComponent("OnDeviceAI"))
+
+        if let resourceURL = Bundle.main.resourceURL {
+            let resourceBackend = resourceURL.appendingPathComponent("backend", isDirectory: true)
+            candidates.append(resourceBackend.appendingPathComponent("mahi_backend"))
+            candidates.append(resourceBackend.appendingPathComponent("OnDeviceAI"))
         }
-        let dmgCandidate = locateRepositoryRoot().appendingPathComponent("artifacts/OnDeviceAIApp.dmg")
-        if FileManager.default.fileExists(atPath: dmgCandidate.path) {
-            return nil
+
+        let repoRoot = locateRepositoryRoot()
+        candidates.append(repoRoot.appendingPathComponent("build/backend/mahi_backend"))
+        candidates.append(repoRoot.appendingPathComponent("build/mahi_backend/mahi_backend"))
+        candidates.append(repoRoot.appendingPathComponent("build/OnDeviceAI/OnDeviceAI"))
+
+        for candidate in candidates {
+            if fileManager.isExecutableFile(atPath: candidate.path) {
+                return candidate
+            }
         }
+
         return nil
     }
 
@@ -256,4 +273,5 @@ final class BackendProcessManager: ObservableObject {
         }
         return url
     }
+
 }

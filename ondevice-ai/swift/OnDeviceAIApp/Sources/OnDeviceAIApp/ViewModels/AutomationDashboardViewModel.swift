@@ -52,6 +52,15 @@ final class AutomationDashboardViewModel: ObservableObject {
         }
     }
 
+    func refreshLogsOnly() async {
+        do {
+            let events = try await client.logs(limit: 60)
+            automationLog = events
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
     func trigger(action: QuickAction) {
         isRunningQuickAction = true
         statusMessage = nil

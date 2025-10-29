@@ -1,7 +1,23 @@
 model:
-  profile: mlx_tinyllama
-  backend: mlx
+  profile: hf_mistral
+  backend: huggingface
+  mode: rules
   runtime_url: http://127.0.0.1:9000
+  modes:
+  - id: ml
+    label: Machine Learning
+    description: Use the configured language model runtime for embeddings and planning.
+    capabilities:
+    - planning
+    - embeddings
+    - semantic-search
+  - id: rules
+    label: Rules Engine
+    description: Disable ML calls and fall back to deterministic rule-based routines.
+    capabilities:
+    - deterministic
+    - offline
+    - fast-start
   profiles:
   - id: mlx_tinyllama
     label: On-device TinyLlama
@@ -43,6 +59,23 @@ model:
       openai:
         chat_model: gpt-4o-mini
         embedding_model: text-embedding-3-small
+  - id: hf_mistral
+    label: Hugging Face Mistral Instruct
+    backend: huggingface
+    description: Self-host an open-source instruct model via Hugging Face Inference
+      API.
+    capabilities:
+    - open-source
+    - configurable
+    - json-output
+    requires:
+      environment:
+      - HUGGINGFACEHUB_API_TOKEN
+    settings:
+      huggingface:
+        model_id: mistralai/Mistral-7B-Instruct-v0.2
+        embedding_model: sentence-transformers/all-MiniLM-L6-v2
+        lora_adapter: ''
   mlx:
     model_path: bundle://tinyllama-1.1b-chat-q4f16_1
     model_name: mlx-community/tinyllama-1.1b-chat-q4f16_1
@@ -53,13 +86,20 @@ model:
     api_key: ''
     chat_model: gpt-4o-mini
     embedding_model: text-embedding-3-small
+  huggingface:
+    model_id: mistralai/Mistral-7B-Instruct-v0.2
+    embedding_model: sentence-transformers/all-MiniLM-L6-v2
+    lora_adapter: ''
 permissions:
   file_access: false
   network_access: false
   calendar_access: false
   mail_access: false
+  browser_access: false
+  shell_access: false
+  automation_access: false
 auth:
-  bootstrap_token: ""
+  bootstrap_token: ''
   token_ttl_seconds: 3600
   rate_limit_per_minute: 120
   enforce_tls: true
@@ -72,7 +112,7 @@ telemetry:
   retention_days: 30
   remote_upload:
     enabled: false
-    endpoint: ""
+    endpoint: ''
 registry:
   database: state/registry.db
   manifests: []
@@ -93,15 +133,90 @@ sandbox:
   idle_priority: true
   nice_increment: 10
   collect_usage: true
+dashboard:
+  quick_goals:
+  - id: daily-briefing
+    label: Daily Briefing
+    description: Plan a review of today's calendar, mail, and top headlines.
+    goal: Assemble a daily briefing that covers upcoming calendar items, priority
+      emails, and the biggest news stories. Summarize actionable next steps for the
+      day.
+    category: Briefings
+    mode: auto
+    fields: []
+  - id: research-topic
+    label: Research Topic
+    description: Compile a concise research memo for a topic you provide.
+    goal: Research the topic '{{topic}}' across trusted sources. Produce a 5-bullet
+      briefing including fast facts, open questions, and suggested follow-ups.
+    category: Research
+    mode: plan
+    fields:
+    - key: topic
+      label: Topic
+      placeholder: e.g. Apple Vision Pro updates
+  - id: draft-email
+    label: Draft Email Reply
+    description: Generate a polite reply for the pasted email thread context.
+    goal: Given the email thread provided below, craft a polite and efficient reply
+      that addresses all questions, sets clear next steps, and highlights any outstanding
+      decisions.
+    category: Communication
+    mode: plan
+    fields:
+    - key: thread
+      label: Email Thread
+      placeholder: Paste the relevant email conversation here
+      multiline: true
+  - id: inbox-triage
+    label: Inbox Triage
+    description: Sort unread emails by urgency and suggest quick responses.
+    goal: Review the mailbox '{{mailbox}}' and group unread messages by urgency and
+      topic. Summarize the top items with suggested next steps or reply drafts. Flag
+      anything requiring immediate attention.
+    category: Productivity
+    mode: plan
+    fields:
+    - key: mailbox
+      label: Mailbox
+      placeholder: e.g. Work/Inbox
+  - id: task-scheduler
+    label: Task Scheduler
+    description: Turn a task list into a schedule with deadlines and reminders.
+    goal: Using the task list below, create a prioritized execution plan for the coming
+      week. Assign deadlines, owners if provided, and recommended reminders or follow-ups
+      for each task.
+    category: Planning
+    mode: plan
+    fields:
+    - key: tasks
+      label: Tasks
+      placeholder: List tasks with optional owners or due dates
+      multiline: true
+  - id: cleanup-downloads
+    label: Clean Downloads Folder
+    description: Audit the Downloads folder and archive or delete clutter safely.
+    goal: Inspect the folder at '{{path}}'. Identify temporary, duplicate, or large
+      files older than {{days_old}} days. Prepare a cleanup report and optional shell
+      commands to archive or delete safely.
+    category: System
+    mode: plan
+    fields:
+    - key: path
+      label: Folder Path
+      placeholder: ~/Downloads
+    - key: days_old
+      label: Older Than (days)
+      placeholder: '14'
 runtime_pool:
   enabled: false
   executable: tools/mlx_runtime.py
   min_runtimes: 0
-  desired_runtimes: 0
   max_runtimes: 2
   base_port: 9600
   heartbeat_seconds: 5.0
   restart_backoff: 3.0
+  desired_runtimes: 0
   shutdown_timeout: 5.0
 supervisor:
   enabled: true

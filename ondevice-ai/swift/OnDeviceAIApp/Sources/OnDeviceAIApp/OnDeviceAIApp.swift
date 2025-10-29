@@ -9,6 +9,7 @@ struct OnDeviceAIApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
+                .environment(\.themeDescriptor, appState.themeDescriptor)
                 .frame(minWidth: 1024, minHeight: 680)
         }
         .defaultSize(width: 1180, height: 760)
@@ -19,6 +20,7 @@ struct OnDeviceAIApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appState)
+                .environment(\.themeDescriptor, appState.themeDescriptor)
                 .frame(width: 520, height: 420)
         }
     }

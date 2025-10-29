@@ -10,6 +10,7 @@ plugins_dir = os.path.join(project_root, 'plugins')
 models_dir = os.path.join(project_root, 'ml_models')
 config_dir = os.path.join(project_root, 'config')
 web_dist_dir = os.path.join(project_root, 'swift', 'OnDeviceAIApp', 'dist')
+daemon_entry = os.path.join(project_root, 'automation_daemon.py')
 
 datas = []
 if os.path.isdir(plugins_dir):
@@ -27,7 +28,7 @@ if os.path.isfile(icns):
     icon_path = icns
 
 a = Analysis(
-    [os.path.join(project_root, 'launcher.py')],
+    [daemon_entry],
     pathex=[project_root],
     binaries=[],
     datas=datas,
@@ -53,7 +54,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='OnDeviceAI',
+    name='mahi_backend',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -69,17 +70,17 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='OnDeviceAI'
+    name='mahi_backend'
 )
 
 app = BUNDLE(
     coll,
-    name='OnDeviceAI.app',
+    name='MahiBackend.app',
     icon=icon_path,
     bundle_identifier='ai.ondevice.app',
     info_plist={
-        'CFBundleDisplayName': 'OnDeviceAI',
-        'CFBundleName': 'OnDeviceAI',
+        'CFBundleDisplayName': 'Mahi Backend',
+        'CFBundleName': 'Mahi Backend',
         'CFBundleShortVersionString': os.environ.get('APP_VERSION', '1.0.0'),
         'CFBundleVersion': os.environ.get('APP_BUILD', '1'),
         'LSBackgroundOnly': False,

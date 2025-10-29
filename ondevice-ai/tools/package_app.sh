@@ -17,6 +17,8 @@ TARGET_APP="$TARGET_DIST_DIR/OnDeviceAI.app"
 BACKEND_RESOURCE_DIR="$TARGET_APP/Contents/Resources/backend"
 DMG_PATH="$TARGET_DIST_DIR/OnDeviceAI.dmg"
 ARTIFACT_DMG="$ROOT_DIR/artifacts/OnDeviceAIApp.dmg"
+PYINSTALLER_OUTPUT_NAME="${PYINSTALLER_OUTPUT_NAME:-mahi_backend}"
+PYINSTALLER_APP_BUNDLE="${PYINSTALLER_APP_BUNDLE:-MahiBackend.app}"
 
 APP_DISPLAY_NAME="${APP_DISPLAY_NAME:-OnDeviceAI}"
 APP_EXECUTABLE_NAME="${APP_EXECUTABLE_NAME:-OnDeviceAIApp}"
@@ -48,13 +50,20 @@ fi
 echo "Building backend with PyInstaller"
 "$PYINSTALLER_BIN" "$ROOT_DIR/packaging/OnDeviceAI.spec" --noconfirm --distpath "$PY_DIST" --workpath "$PY_WORK"
 
-if [[ ! -d "$PY_DIST/OnDeviceAI" ]]; then
-  echo "PyInstaller output missing expected directory at $PY_DIST/OnDeviceAI" >&2
+BACKEND_DIST_PATH="$PY_DIST/$PYINSTALLER_OUTPUT_NAME"
+
+if [[ ! -d "$BACKEND_DIST_PATH" ]]; then
+  echo "PyInstaller output missing expected directory at $BACKEND_DIST_PATH" >&2
   exit 1
 fi
 
 mkdir -p "$BACKEND_STAGE"
-cp -R "$PY_DIST/OnDeviceAI"/. "$BACKEND_STAGE"/
+cp -R "$BACKEND_DIST_PATH"/. "$BACKEND_STAGE"/
+
+# Drop any auxiliary PyInstaller app bundle to avoid shipping duplicate UIs
+if [[ -d "$PY_DIST/$PYINSTALLER_APP_BUNDLE" ]]; then
+  rm -rf "$PY_DIST/$PYINSTALLER_APP_BUNDLE"
+fi
 
 echo "Building Swift UI app"
 SWIFT_BIN_PATH=$(cd "$SWIFT_PACKAGE_DIR" && swift build -c release --show-bin-path | tail -n 1)
@@ -113,8 +122,8 @@ mkdir -p "$BACKEND_RESOURCE_DIR"
 rsync -a "$BACKEND_STAGE"/ "$BACKEND_RESOURCE_DIR"/
 
 # Ensure backend binary is executable after copy
-if [[ -f "$BACKEND_RESOURCE_DIR/OnDeviceAI" ]]; then
-  chmod +x "$BACKEND_RESOURCE_DIR/OnDeviceAI"
+if [[ -f "$BACKEND_RESOURCE_DIR/$PYINSTALLER_OUTPUT_NAME" ]]; then
+  chmod +x "$BACKEND_RESOURCE_DIR/$PYINSTALLER_OUTPUT_NAME"
 fi
 
 echo "Packaging DMG"

@@ -203,8 +203,42 @@ struct AutomationPermissions: Codable, Equatable {
     var fileAccess: Bool
     var calendarAccess: Bool
     var mailAccess: Bool
+    var networkAccess: Bool
+    var browserAccess: Bool
+    var shellAccess: Bool
+    var automationAccess: Bool
 
-    static let defaults = AutomationPermissions(fileAccess: false, calendarAccess: false, mailAccess: false)
+    static let defaults = AutomationPermissions(
+        fileAccess: false,
+        calendarAccess: false,
+        mailAccess: false,
+        networkAccess: false,
+        browserAccess: false,
+        shellAccess: false,
+        automationAccess: false
+    )
+}
+
+struct UserPreferences: Codable, Equatable {
+    enum SidebarDensity: String, CaseIterable, Identifiable, Codable {
+        case comfy
+        case compact
+
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .comfy: return "Comfortable"
+            case .compact: return "Compact"
+            }
+        }
+    }
+
+    var sidebarDensity: SidebarDensity = .comfy
+    var showAutomationStatus: Bool = true
+    var animateBackground: Bool = true
+    var showAdvancedConnectionSettings: Bool = false
+
+    static let defaults = UserPreferences()
 }
 
 struct ModelRequirement: Codable, Hashable {

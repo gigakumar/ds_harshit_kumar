@@ -2,6 +2,8 @@ import SwiftUI
 
 struct AutomationDashboardView: View {
     @ObservedObject var viewModel: AutomationDashboardViewModel
+    @Environment(\.themeDescriptor) private var theme
+    @State private var hoveredQuickActionID: UUID?
 
     private let gridColumns = [
         GridItem(.adaptive(minimum: 220), spacing: 20)
@@ -18,7 +20,7 @@ struct AutomationDashboardView: View {
             .padding(.bottom, 48)
         }
         .scrollIndicators(.hidden)
-        .foregroundColor(.white)
+        .foregroundColor(theme.primaryText)
         .task {
             await viewModel.refresh()
         }
@@ -33,12 +35,15 @@ struct AutomationDashboardView: View {
                     if viewModel.isRunningQuickAction {
                         ProgressView()
                             .progressViewStyle(.circular)
-                            .tint(.white)
+                            .tint(theme.accent)
                     }
                 }
 
+                metricsRow
+
                 LazyVGrid(columns: gridColumns, spacing: 20) {
                     ForEach(viewModel.quickActions) { action in
+                        let isHovered = hoveredQuickActionID == action.id
                         Button {
                             viewModel.trigger(action: action)
                         } label: {
@@ -47,40 +52,119 @@ struct AutomationDashboardView: View {
                                     Image(systemName: action.icon)
                                         .font(.system(size: 24, weight: .semibold))
                                         .symbolRenderingMode(.palette)
-                                        .foregroundStyle(.white, Color.white.opacity(0.4))
+                                        .foregroundStyle(theme.accent, theme.accent.opacity(0.35))
                                     Spacer()
                                     Image(systemName: "arrow.forward.circle.fill")
                                         .font(.title3)
-                                        .foregroundColor(.white.opacity(0.75))
+                                        .foregroundColor(theme.secondaryText)
                                 }
                                 Text(action.title)
                                     .font(.system(.title3, design: .rounded, weight: .semibold))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(theme.primaryText)
                                 Text(action.subtitle)
                                     .font(.system(.footnote, design: .rounded))
-                                    .foregroundColor(.white.opacity(0.75))
+                                    .foregroundColor(theme.secondaryText)
                                     .multilineTextAlignment(.leading)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(18)
-                            .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .background(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .fill(theme.quickActionBackground.opacity(isHovered ? 0.55 : 0.38))
+                            )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [theme.accent.opacity(isHovered ? 0.35 : 0.18), theme.cardStroke],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
                             )
                         }
                         .buttonStyle(.plain)
                         .disabled(viewModel.isRunningQuickAction)
+#if os(macOS)
+                        .onHover { hovering in
+                            hoveredQuickActionID = hovering ? action.id : (hoveredQuickActionID == action.id ? nil : hoveredQuickActionID)
+                        }
+#endif
+                        .animation(.easeInOut(duration: 0.2), value: isHovered)
                     }
                 }
 
                 if let status = viewModel.statusMessage {
                     Text(status)
                         .font(.footnote)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(theme.secondaryText)
                 }
             }
         }
+    }
+
+    private var metricsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                metricChip(icon: "bolt.badge.checkmark", title: "Runs today", value: logCountText, tint: theme.accent)
+                metricChip(icon: "sparkles", title: "Quick automations", value: "\(viewModel.quickActions.count)", tint: theme.statusChecking)
+                metricChip(icon: "lock.circle", title: "Permissions on", value: "\(enabledPermissions)", tint: theme.statusConnected)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func metricChip(icon: String, title: String, value: String, tint: Color) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.18))
+                    .frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .foregroundColor(tint)
+                    .font(.system(size: 16, weight: .semibold))
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title.uppercased())
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundColor(theme.secondaryText)
+                    .tracking(0.8)
+                Text(value)
+                    .font(.system(.title3, design: .rounded))
+                    .fontWeight(.semibold)
+                    .foregroundColor(theme.primaryText)
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(theme.quickActionBackground.opacity(0.45))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(tint.opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    private var logCountText: String {
+        let count = viewModel.automationLog.count
+        return count == 0 ? "—" : "\(count)"
+    }
+
+    private var enabledPermissions: Int {
+        let permissions = viewModel.permissions
+        return [
+            permissions.fileAccess,
+            permissions.calendarAccess,
+            permissions.mailAccess,
+            permissions.networkAccess,
+            permissions.browserAccess,
+            permissions.shellAccess,
+            permissions.automationAccess
+        ].filter { $0 }.count
     }
 
     private var modelStatus: some View {
@@ -89,11 +173,11 @@ struct AutomationDashboardView: View {
                 GlassSectionHeader(title: "Model status", systemImage: "cpu")
                 if let summary = viewModel.modelSummary {
                     HStack(alignment: .center, spacing: 16) {
-                        GlassTag(text: summary.backend.uppercased(), tint: Color.white.opacity(0.18))
+                        GlassTag(text: summary.backend.uppercased(), tint: theme.quickActionBackground.opacity(0.45))
                         if let runtime = summary.runtimeURL {
                             Text(runtime)
                                 .font(.system(.caption, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(theme.secondaryText)
                                 .lineLimit(1)
                         }
                         Spacer()
@@ -101,21 +185,22 @@ struct AutomationDashboardView: View {
                             VStack(alignment: .trailing, spacing: 6) {
                                 Text(active.label)
                                     .font(.system(.headline, design: .rounded))
+                                    .foregroundColor(theme.primaryText)
                                 Text(active.description)
                                     .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(theme.secondaryText)
                                     .multilineTextAlignment(.trailing)
                                 if let environments = active.requires?.environment, environments.isEmpty == false {
                                     HStack(spacing: 8) {
                                         ForEach(environments, id: \.self) { item in
-                                            GlassTag(text: item, tint: Color.white.opacity(0.12))
+                                            GlassTag(text: item, tint: theme.quickActionBackground.opacity(0.35))
                                         }
                                     }
                                 }
                                 if active.capabilities.isEmpty == false {
                                     HStack(spacing: 8) {
                                         ForEach(active.capabilities, id: \.self) { capability in
-                                            GlassTag(text: capability.uppercased(), tint: Color.white.opacity(0.12))
+                                            GlassTag(text: capability.uppercased(), tint: theme.quickActionBackground.opacity(0.35))
                                         }
                                     }
                                 }
@@ -126,7 +211,7 @@ struct AutomationDashboardView: View {
                 } else {
                     Text("Model configuration unavailable. Verify the daemon is running.")
                         .font(.system(.footnote, design: .rounded))
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundColor(theme.secondaryText)
                 }
             }
         }
@@ -145,7 +230,7 @@ struct AutomationDashboardView: View {
                 }
                 Text("Fine-tune in Settings → Automation permissions.")
                     .font(.system(.caption, design: .rounded))
-                    .foregroundColor(.white.opacity(0.65))
+                    .foregroundColor(theme.secondaryText)
             }
         }
     }
@@ -154,18 +239,19 @@ struct AutomationDashboardView: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(enabled ? .green : .white.opacity(0.5))
+                .foregroundColor(enabled ? theme.statusConnected : theme.secondaryText)
             Text(title)
                 .font(.system(.footnote, design: .rounded))
+                .foregroundColor(theme.primaryText)
             Text(enabled ? "Allowed" : "Blocked")
                 .font(.system(.caption, design: .rounded))
-                .foregroundColor(enabled ? .green.opacity(0.7) : .white.opacity(0.45))
+                .foregroundColor(enabled ? theme.statusConnected.opacity(0.85) : theme.secondaryText)
         }
         .frame(width: 120, height: 100)
-        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(theme.quickActionBackground.opacity(0.35), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(enabled ? Color.green.opacity(0.4) : Color.white.opacity(0.1), lineWidth: 1)
+                .stroke(enabled ? theme.statusConnected.opacity(0.45) : theme.cardStroke, lineWidth: 1)
         )
     }
 
@@ -176,7 +262,7 @@ struct AutomationDashboardView: View {
                 if viewModel.automationLog.isEmpty {
                     Text("No automation events captured yet.")
                         .font(.footnote)
-                        .foregroundColor(.white.opacity(0.75))
+                        .foregroundColor(theme.secondaryText)
                 } else {
                     ForEach(viewModel.automationLog) { event in
                         VStack(alignment: .leading, spacing: 6) {
@@ -186,18 +272,18 @@ struct AutomationDashboardView: View {
                                 Spacer()
                                 Text(event.ts, style: .time)
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.58))
+                                    .foregroundColor(theme.secondaryText)
                             }
                             if event.payload.isEmpty == false {
                                 Text(event.payload.map { "\($0.key): \($0.value)" }.sorted().joined(separator: ", "))
                                     .font(.system(.caption, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.78))
+                                    .foregroundColor(theme.secondaryText)
                                     .lineLimit(3)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(14)
-                        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(theme.quickActionBackground.opacity(0.32), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                 }
             }

@@ -1,0 +1,7 @@
+# Optional dependencies for fine-tuning the automation planner LLM
+transformers>=4.41.0
+peft>=0.10.0
+datasets>=2.19.0
+accelerate>=0.29.3
+bitsandbytes>=0.43.1
+PyYAML>=6.0  # optional: required for YAML training configs
